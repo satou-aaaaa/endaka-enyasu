@@ -442,6 +442,16 @@ try {
       await q.click("#hint"); await q.waitForTimeout(50);
       check("別のタブで先に進んだ古い画面でヒントを押しても、復習の段は戻らない", await q.evaluate((t) => JSON.parse(localStorage.getItem("eny-depth")).rv[t].s, tq) === 2);
     }
+    // 2つのタブで同じ問題に自信ありをかけ、別のタブが先に正解して2段目へ進んでいたら、ここで正解しても数え直さない（endaka-enyasu #1 の CodeRabbit）
+    { const tq = "nedan|dq2";
+      await q.goto(url); await q.waitForTimeout(150);
+      await q.evaluate((t) => { __nm.save((s) => { s.runs.p = { mode: "p", date: __nm.todayKey(), list: [t], res: [], cur: null, id: "dq2" }; }); Depth.runStart(); __nm.play("p"); }, tq);
+      await q.click("#dp-sure");
+      await q.evaluate((t) => __nm.save((s) => { s.runs.p.cur = { i: 0, tag: t, wrong: [], hints: 0, step: 2, w2: [], jd: { sure: true, ok: true, text: "" } }; s.runs.p.ds = { n: 1, ok: 1 }; }), tq);
+      await q.click(`.ch[data-j="${await ansIdx(q)}"]`); await q.waitForTimeout(80);
+      const ds = await q.evaluate(() => __nm.load().runs.p.ds);
+      check("別のタブで先に自信ありで正解していたら、ここで正解しても自信の数を足さず2段目へそろえる", ds && ds.n === 1 && ds.ok === 1 && await q.evaluate(() => __nm.cur().step) === 2 && await q.locator(".why button").count() === 3, JSON.stringify(ds));
+    }
     // 復習の途中でヒント・まちがいがあって日の来た問題が0になっても、ホームの「復習の続きから」で戻れる（2026-11-11 CodeRabbit）
     { const rk = Object.keys(dp2.rv)[0];
       await q.evaluate((k) => { const d = JSON.parse(localStorage.getItem("eny-depth")); d.rv = { [k]: { s: 0, due: "2026-01-01", t: 3 } }; localStorage.setItem("eny-depth", JSON.stringify(d)); }, rk);

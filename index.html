@@ -683,20 +683,25 @@ function chooseWhy(x) {
 }
 // この回の「自信あり」の数と当たり（結果の画面に出す。開き直しても残るよう回の記録に入れる）
 function sureCount(ok) { save((s) => { const r = s.runs[MODE]; if (!same(r)) return; r.ds = r.ds || { n: 0, ok: 0 }; r.ds.n++; if (ok) r.ds.ok++; }); }
+// 保存してある、いまの問題の途中経過（別のタブで先に判定・2段目へ進んでいれば、ここに出る）
+function savedCur() { const r = load().runs[MODE], c = r && r.cur; return c && c.i === cur.i && c.tag === cur.tag ? c : null; }
 function choose(j) {
   if (cur.done || cur.step === 2) return;
   const t = cur.P.opts[j];
   if (!same(load().runs[MODE])) { toast("別の画面で先に進んでいます"); return play(); }
+  // 別のタブで、この問題の自信をもう判定していたら、もう一度判定・数えない（自信ありは1問1回。endaka-enyasu #1 の CodeRabbit）
+  const sv = savedCur(), judged = !!(sv && sv.jd) || !!cur.jd;
+  if (t === cur.P.ans && sv && sv.step === 2 && cur.P.grp) { if (sv.jd && !cur.jd) cur.jd = sv.jd; cur.step = 2; keep(); return askWhy(); } // 別のタブで2段目へ進んでいたら、ここも2段目へ
   if (t !== cur.P.ans) {
     if (cur.wrong.includes(t)) return;
     buzz(40);
-    const jd = Depth.judge(false); if (jd && jd.sure) { cur.jd = jd; sureCount(false); }
+    const jd = judged ? null : Depth.judge(false); if (jd && jd.sure) { cur.jd = jd; sureCount(false); }
     cur.wrong.push(t); keep(); paint();
     $("msg").className = "msg bad"; $("msg").textContent = (cur.P.type === "ad" ? "✕ その行は、ふつうの書き方です。もう一度どうぞ。" : "✕ ちがいます。もう一度どうぞ。") + (jd && jd.text ? "　" + jd.text : "");
     return;
   }
   // 正解（続けて「円高？円安？」を選ぶ）
-  const jd = Depth.judge(true); if (jd && jd.sure) { cur.jd = jd; sureCount(true); }
+  const jd = judged ? null : Depth.judge(true); if (jd && jd.sure) { cur.jd = jd; sureCount(true); }
   if (cur.P.grp) { cur.step = 2; keep(); buzz(10); return askWhy(); }
   solved();
 }
